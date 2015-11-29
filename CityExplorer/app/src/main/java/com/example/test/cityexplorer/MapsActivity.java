@@ -53,7 +53,8 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private PolylineOptions mPolylineOptions;
     LocationManager locationManager;
-    //ArrayList<LatLng> mMarkerPoints;
+    ArrayList<Double> latitudes;
+    ArrayList<Double> longitudes;
     private LatLng mLatLng;
     private boolean mRequestingLocationUpdates = false;
     double mLatitude = 54.5567776;
@@ -74,14 +75,11 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         //  LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //this.locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-        //Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-    //    longitude = location.getLongitude();
-  //      latitude = location.getLatitude();
-      //  Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
-//        if(location != null) {
-//
-//            onLocationChanged(location);
-//        }
+        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        longitude = location.getLongitude();
+        latitude = location.getLatitude();
+        Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
+
         setUpMapIfNeeded();
         initializeMap();
 
