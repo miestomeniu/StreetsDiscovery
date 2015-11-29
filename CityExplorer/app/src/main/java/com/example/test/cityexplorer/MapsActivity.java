@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Criteria;
@@ -53,8 +54,9 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private PolylineOptions mPolylineOptions;
     LocationManager locationManager;
-    ArrayList<Double> latitudes;
-    ArrayList<Double> longitudes;
+    ArrayList<Double> latitudes = new ArrayList<Double>();
+    ArrayList<Double> longitudes = new ArrayList<Double>();
+    ArrayList<Integer> points = new ArrayList<Integer>();
     private LatLng mLatLng;
     private boolean mRequestingLocationUpdates = false;
     double mLatitude = 54.5567776;
@@ -62,6 +64,8 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private GoogleApiClient mGoogleApiClient;
     double latitude, longitude;
     private Location mLastLocation;
+    private int taskai;
+    private SharedPreferences sp;
     private LocationRequest mLocationRequest;
     private static int UPDATE_INTERVAL = 1000; // 1 sec
     private static int FATEST_INTERVAL = 5000; // 5 sec
@@ -74,14 +78,15 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
        // setUpMapIfNeeded();
         //  LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //this.locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        longitude = location.getLongitude();
-        latitude = location.getLatitude();
-        Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
-
+        latitudes.add(54.7246625); latitudes.add(54.724867); latitudes.add(54.7243527); latitudes.add(54.7234972); latitudes.add(54.7234943);
+        longitudes.add(25.3413606); longitudes.add(25.3409542); longitudes.add(25.3414746); longitudes.add(25.3374738); longitudes.add(25.3367553);
+        points.add(1); points.add(3); points.add(6); points.add(2); points.add(7);
+        sp = getSharedPreferences("My_prefs", Context.MODE_PRIVATE);
+        taskai = sp.getInt("points", 0);
         setUpMapIfNeeded();
         initializeMap();
+        for(int i = 0; i < 5; i++)
+            mMap.addMarker(new MarkerOptions().position(new LatLng(latitudes.get(i), longitudes.get(i))));
 
         buildGoogleApiClient();
 
@@ -129,15 +134,37 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             double latitude = mLastLocation.getLatitude();
             double longitude = mLastLocation.getLongitude();
             mLatLng = new LatLng(latitude, longitude);
-
+            for(int i = 0; i < 5; i++){
+                double distance = CalculationByDistance(mLatLng, new LatLng(latitudes.get(i), longitudes.get(i)));
+                if (distance < 5) {
+                    send_alert(i);
+                }
+            }
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putInt("points", taskai);
             Toast.makeText(getApplicationContext(), "Display: " + latitude + ", " + longitude, Toast.LENGTH_LONG).show();
             updatePolyline();
                     updateCamera();
-                    updateMarker();
+                   // updateMarker();
         } else {
             Toast.makeText(getApplicationContext(), "Couldn't get the location. Make sure location is enabled on the device", Toast.LENGTH_LONG).show();
 
         }
+    }
+
+    public void send_alert(final int j){
+        AlertDialog.Builder dialog = new AlertDialog.Builder(MapsActivity.this);
+        dialog
+                .setTitle("Šaunuolis! Pasiekei!")
+                .setPositiveButton("Gerai", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface paramDialogInterface, int paramInt) {
+                        taskai += points.get(j);
+                        Toast.makeText(getApplicationContext(), "Taškų skaičius: " + taskai, Toast.LENGTH_LONG).show();
+                    }
+                });
+        AlertDialog alert_dialog = dialog.create();
+        alert_dialog.show();
     }
 
     /*public void onLocationChanged(Location location) {
@@ -162,7 +189,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     }
 
     private void updatePolyline() {
-        mMap.clear();
+     //   mMap.clear();
        // mMap.addPolyline(new PolylineOptions()
 //                .add(mLatLng, new LatLng(latitude, longitude))
 //                .width(5)
@@ -218,10 +245,7 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         // Do a null check to confirm that we have not already instantiated the map.
         if (mMap == null) {
             mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
-            double distance = CalculationByDistance(new LatLng(mLatitude, mLongitude), new LatLng(54.5566616, 23.3518372));
-            if (distance < 5) {
-                Log.d("atstumas: ", String.valueOf(distance));
-            }
+
             mMap.setMyLocationEnabled(true);
             mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
                 @Override
