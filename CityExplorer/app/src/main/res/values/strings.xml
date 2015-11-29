@@ -1,4 +1,11 @@
 <resources>
-    <string name="app_name">CityExplorer</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="app_name">Places Discovery</string>
+    <string name="title_activity_maps">Places Discovery</string>
+        <array name="testArray">
+            <item>Random places</item>
+            <item>Bars</item>
+            <item>Restaurants</item>
+            <item>Museums</item>
+            <item>Monuments</item>
+        </array>
 </resources>

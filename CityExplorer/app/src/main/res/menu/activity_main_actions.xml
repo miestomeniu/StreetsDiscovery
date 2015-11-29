@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- Check updates -->
+    <item android:id="@+id/action_check_updates"
+        android:icon="@drawable/ic_action_editor_format_list_bulleted"
+        android:title="Choose mode"
+        app:showAsAction="never" />
+
+</menu>

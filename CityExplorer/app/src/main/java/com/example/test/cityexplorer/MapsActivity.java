@@ -1,23 +1,40 @@
 package com.example.test.cityexplorer;
 
+import android.app.ActionBar;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -29,8 +46,10 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -38,6 +57,7 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -48,11 +68,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks,
+public class MapsActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private PolylineOptions mPolylineOptions;
+    private ArrayList<MarkerOptions> mMarkerOptions;
     LocationManager locationManager;
     ArrayList<Double> latitudes = new ArrayList<Double>();
     ArrayList<Double> longitudes = new ArrayList<Double>();
@@ -70,29 +91,79 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     private static int UPDATE_INTERVAL = 1000; // 1 sec
     private static int FATEST_INTERVAL = 5000; // 5 sec
     private static int DISPLACEMENT = 1; // 1 meters
+    private static int ACTIVITY_CAMERA = 1;
+    private int currentIndex;
+    private boolean[] isVisited = new boolean[5];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-       // setUpMapIfNeeded();
+        ActionBar actionBar = getActionBar();
+        //actionBar.show();
+
+        // setUpMapIfNeeded();
         //  LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //this.locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        latitudes.add(54.7246625); latitudes.add(54.724867); latitudes.add(54.7243527); latitudes.add(54.7234972); latitudes.add(54.7234943);
-        longitudes.add(25.3413606); longitudes.add(25.3409542); longitudes.add(25.3414746); longitudes.add(25.3374738); longitudes.add(25.3367553);
+        latitudes.add(54.7229141); latitudes.add(54.724867); latitudes.add(54.7243527); latitudes.add(54.7234972); latitudes.add(54.7234943);
+        longitudes.add(25.3374497); longitudes.add(25.3409542); longitudes.add(25.3414746); longitudes.add(25.3374738); longitudes.add(25.3367553);
         points.add(1); points.add(3); points.add(6); points.add(2); points.add(7);
         sp = getSharedPreferences("My_prefs", Context.MODE_PRIVATE);
         taskai = sp.getInt("points", 0);
         setUpMapIfNeeded();
         initializeMap();
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < 5; i++) {
             mMap.addMarker(new MarkerOptions().position(new LatLng(latitudes.get(i), longitudes.get(i))));
+        }
 
         buildGoogleApiClient();
 
         createLocationRequest();
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MapsActivity.this);
+        builder.setTitle("Select a mode")
+                .setItems(R.array.testArray, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // The 'which' argument contains the index position
+                        // of the selected item
+                    }
+                });
+        builder.create();
 //        togglePeriodicLocationUpdates();
         //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, this);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.activity_main_actions, menu);
+
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Take appropriate action for each action item click
+        switch (item.getItemId()) {
+            case R.id.action_check_updates:
+
+                // search action
+                return true;
+            /*case R.id.action_location_found:
+                // location found
+                LocationFound();
+                return true;
+            case R.id.action_refresh:
+                // refresh
+                return true;
+            case R.id.action_help:
+                // help action
+                return true;
+            case R.id.action_check_updates:
+                // check for updates action
+                return true;*/
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     @Override
@@ -136,18 +207,22 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             mLatLng = new LatLng(latitude, longitude);
             for(int i = 0; i < 5; i++){
                 double distance = CalculationByDistance(mLatLng, new LatLng(latitudes.get(i), longitudes.get(i)));
-                if (distance < 5) {
+                if (distance < 20 && !isVisited[i]) {
+                    currentIndex = i;
                     send_alert(i);
+                    isVisited[i] = true;
+                    Intent camera_intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                    startActivityForResult(camera_intent, ACTIVITY_CAMERA);
                 }
             }
             SharedPreferences.Editor editor = sp.edit();
             editor.putInt("points", taskai);
-            Toast.makeText(getApplicationContext(), "Display: " + latitude + ", " + longitude, Toast.LENGTH_LONG).show();
+            //Toast.makeText(getApplicationContext(), "Display: " + latitude + ", " + longitude, Toast.LENGTH_LONG).show();
             updatePolyline();
-                    updateCamera();
-                   // updateMarker();
+            updateCamera();
+            //updateMarker();
         } else {
-            Toast.makeText(getApplicationContext(), "Couldn't get the location. Make sure location is enabled on the device", Toast.LENGTH_LONG).show();
+            //Toast.makeText(getApplicationContext(), "Couldn't get the location. Make sure location is enabled on the device", Toast.LENGTH_LONG).show();
 
         }
     }
@@ -160,11 +235,70 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
                     @Override
                     public void onClick(DialogInterface paramDialogInterface, int paramInt) {
                         taskai += points.get(j);
-                        Toast.makeText(getApplicationContext(), "Taškų skaičius: " + taskai, Toast.LENGTH_LONG).show();
+                        //Toast.makeText(getApplicationContext(), "Taškų skaičius: " + taskai, Toast.LENGTH_LONG).show();
                     }
                 });
         AlertDialog alert_dialog = dialog.create();
         alert_dialog.show();
+    }
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if ((resultCode == RESULT_OK) && (requestCode == ACTIVITY_CAMERA)) {
+            String[] projection = new String[]{
+                    MediaStore.Images.ImageColumns._ID,
+                    MediaStore.Images.ImageColumns.DATA,
+                    MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME,
+                    MediaStore.Images.ImageColumns.DATE_TAKEN,
+                    MediaStore.Images.ImageColumns.MIME_TYPE
+            };
+            final Cursor cursor = getContentResolver()
+                    .query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, null,
+                            null, MediaStore.Images.ImageColumns.DATE_TAKEN + " DESC");
+            if (cursor.moveToFirst()) {
+                String imageLocation = cursor.getString(1);
+                File imageFile = new File(imageLocation);
+                if (imageFile.exists()) {   // TODO: is there a better way to do this?
+                    Bitmap bm = BitmapFactory.decodeFile(imageLocation);
+                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(bm, 200, 200, true);
+                    scaledBitmap = getRoundedCornerBitmap(scaledBitmap);
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(270);
+                    Bitmap rotatedBitmap = Bitmap.createBitmap(scaledBitmap , 0, 0, scaledBitmap .getWidth(), scaledBitmap .getHeight(), matrix, true);
+                    BitmapDescriptor icon = BitmapDescriptorFactory.fromBitmap(rotatedBitmap);
+
+                    //mMarkers.get(currentIndex).setIcon(icon);
+
+                    MarkerOptions markerOptions = new MarkerOptions().position(new LatLng(latitudes.get(currentIndex), longitudes.get(currentIndex)))
+                            .title("Current Location")
+                            .snippet("Thinking of finding some thing...")
+                            .icon(icon);
+
+                    mMap.addMarker(markerOptions);
+                }
+            }
+        }
+    }
+
+    public static Bitmap getRoundedCornerBitmap(Bitmap bitmap) {
+        Bitmap output = Bitmap.createBitmap(bitmap.getWidth(),
+                bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(output);
+
+        final int color = 0xff424242;
+        final Paint paint = new Paint();
+        final Rect rect = new Rect(0, 0, bitmap.getWidth(), bitmap.getHeight());
+        final RectF rectF = new RectF(rect);
+        final float roundPx = 12;
+
+        paint.setAntiAlias(true);
+        canvas.drawARGB(0, 0, 0, 0);
+        paint.setColor(color);
+        canvas.drawRoundRect(rectF, roundPx, roundPx, paint);
+
+        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(bitmap, rect, rect, paint);
+
+        return output;
     }
 
     /*public void onLocationChanged(Location location) {
@@ -383,8 +517,8 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         // Assign the new location
         mLastLocation = location;
 
-        Toast.makeText(getApplicationContext(), "Location changed!",
-                Toast.LENGTH_SHORT).show();
+        //Toast.makeText(getApplicationContext(), "Location changed!",
+                //Toast.LENGTH_SHORT).show();
 
         // Displaying the new location on UI
         displayLocation();
