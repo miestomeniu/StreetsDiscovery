@@ -8,7 +8,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.provider.Settings;
@@ -20,10 +19,15 @@ import android.util.Log;
 import android.view.Menu;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -43,18 +47,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
+public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private PolylineOptions mPolylineOptions;
     LocationManager locationManager;
     //ArrayList<LatLng> mMarkerPoints;
     private LatLng mLatLng;
-
+    private boolean mRequestingLocationUpdates = false;
     double mLatitude = 54.5567776;
     double mLongitude = 23.3521873;
-
+    private GoogleApiClient mGoogleApiClient;
     double latitude, longitude;
+    private Location mLastLocation;
+    private LocationRequest mLocationRequest;
+    private static int UPDATE_INTERVAL = 1000; // 1 sec
+    private static int FATEST_INTERVAL = 5000; // 5 sec
+    private static int DISPLACEMENT = 1; // 1 meters
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,11 +82,70 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 //
 //            onLocationChanged(location);
 //        }
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, this);
+        setUpMapIfNeeded();
+
+        buildGoogleApiClient();
+
+        createLocationRequest();
+//        togglePeriodicLocationUpdates();
+        //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, this);
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.connect();
+        }
+    }
 
-    public void onLocationChanged(Location location) {
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Resuming the periodic location updates
+        if (mGoogleApiClient.isConnected() && mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
+    }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+
+    private void displayLocation() {
+
+        mLastLocation = LocationServices.FusedLocationApi
+                .getLastLocation(mGoogleApiClient);
+        if (mLastLocation != null) {
+            mLatLng = new LatLng(latitude, longitude);
+            double latitude = mLastLocation.getLatitude();
+            double longitude = mLastLocation.getLongitude();
+            Toast.makeText(getApplicationContext(), latitude + ", " + longitude, Toast.LENGTH_LONG).show();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    updatePolyline();
+                    updateCamera();
+                    updateMarker();
+                }
+            });
+        } else {
+            Toast.makeText(getApplicationContext(), "Couldn't get the location. Make sure location is enabled on the device", Toast.LENGTH_LONG).show();
+
+        }
+    }
+
+    /*public void onLocationChanged(Location location) {
         longitude = location.getLongitude();
         latitude = location.getLatitude();
         mLatLng = new LatLng(latitude, longitude);
@@ -89,25 +158,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 updateMarker();
             }
         });
-    }
-
-    @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {
-        Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
-
-    }
-
-    @Override
-    public void onProviderEnabled(String s) {
-        Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
-
-    }
-
-    @Override
-    public void onProviderDisabled(String s) {
-        Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
-
-    }
+    }*/
 
     @Override
     public void onMapReady(GoogleMap map) {
@@ -133,12 +184,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mPolylineOptions.color(Color.BLUE).width(10);
     }
 
-    @Override
+ /*   @Override
     protected void onResume() {
         super.onResume();
         setUpMapIfNeeded();
     }
-
+*/
     public double CalculationByDistance(LatLng StartP, LatLng EndP) {
         int Radius = 6371;// radius of earth in Km
         double lat1 = StartP.latitude;
@@ -210,9 +261,109 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         alert_dialog.show();
 
                     }
+                    togglePeriodicLocationUpdates();
                     return false;
                 }
             });
         }
+    }
+
+    private void togglePeriodicLocationUpdates() {
+        if (!mRequestingLocationUpdates) {
+            // Changing the button text
+      //      btnStartLocationUpdates
+        ///            .setText(getString(R.string.btn_stop_location_updates));
+
+            mRequestingLocationUpdates = true;
+
+            // Starting the location updates
+            startLocationUpdates();
+
+           // Log.d(TAG, "Periodic location updates started!");
+
+        } else {
+            // Changing the button text
+           // btnStartLocationUpdates
+              //      .setText(getString(R.string.btn_start_location_updates));
+
+            mRequestingLocationUpdates = false;
+
+            // Stopping the location updates
+            stopLocationUpdates();
+
+            //Log.d(TAG, "Periodic location updates stopped!");
+        }
+    }
+
+    protected void startLocationUpdates() {
+       // setUpMapIfNeeded();
+        LocationServices.FusedLocationApi.requestLocationUpdates(
+                mGoogleApiClient, mLocationRequest, this);
+
+    }
+
+    /**
+     * Stopping location updates
+     */
+    protected void stopLocationUpdates() {
+        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+    }
+
+    /**
+     * Creating google api client object
+     * */
+    protected synchronized void buildGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API).build();
+    }
+
+    /**
+     * Creating location request object
+     * */
+    protected void createLocationRequest() {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(UPDATE_INTERVAL);
+        mLocationRequest.setFastestInterval(FATEST_INTERVAL);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setSmallestDisplacement(DISPLACEMENT);
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult result) {
+        Log.d("connected", "fail");
+      //  Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = "
+        //        + result.getErrorCode());
+    }
+
+    @Override
+    public void onConnected(Bundle arg0) {
+
+        // Once connected with google api, get the location
+        displayLocation();
+        Log.d("connected!", "jdjd");
+        if (mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
+    }
+
+    @Override
+    public void onConnectionSuspended(int arg0) {
+        Log.d("connection suspended!", "jdjd");
+
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        // Assign the new location
+        mLastLocation = location;
+
+        Toast.makeText(getApplicationContext(), "Location changed!",
+                Toast.LENGTH_SHORT).show();
+
+        // Displaying the new location on UI
+        displayLocation();
     }
 }
