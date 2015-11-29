@@ -70,19 +70,20 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        setUpMapIfNeeded();
+       // setUpMapIfNeeded();
         //  LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        this.locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        //this.locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-        Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        longitude = location.getLongitude();
-        latitude = location.getLatitude();
-        Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
+        //Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+    //    longitude = location.getLongitude();
+  //      latitude = location.getLatitude();
+      //  Toast.makeText(getApplicationContext(), "Taskas: " + latitude + " ir " + longitude, Toast.LENGTH_SHORT).show();
 //        if(location != null) {
 //
 //            onLocationChanged(location);
 //        }
         setUpMapIfNeeded();
+        initializeMap();
 
         buildGoogleApiClient();
 
@@ -127,18 +128,14 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
         mLastLocation = LocationServices.FusedLocationApi
                 .getLastLocation(mGoogleApiClient);
         if (mLastLocation != null) {
-            mLatLng = new LatLng(latitude, longitude);
             double latitude = mLastLocation.getLatitude();
             double longitude = mLastLocation.getLongitude();
-            Toast.makeText(getApplicationContext(), latitude + ", " + longitude, Toast.LENGTH_LONG).show();
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    updatePolyline();
+            mLatLng = new LatLng(latitude, longitude);
+
+            Toast.makeText(getApplicationContext(), "Display: " + latitude + ", " + longitude, Toast.LENGTH_LONG).show();
+            updatePolyline();
                     updateCamera();
                     updateMarker();
-                }
-            });
         } else {
             Toast.makeText(getApplicationContext(), "Couldn't get the location. Make sure location is enabled on the device", Toast.LENGTH_LONG).show();
 
@@ -162,12 +159,16 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
     @Override
     public void onMapReady(GoogleMap map) {
-        mMap = map;
-        initializeMap();
+        //mMap = map;
+
     }
 
     private void updatePolyline() {
         mMap.clear();
+       // mMap.addPolyline(new PolylineOptions()
+//                .add(mLatLng, new LatLng(latitude, longitude))
+//                .width(5)
+//                .color(Color.RED));
         mMap.addPolyline(mPolylineOptions.add(mLatLng));
     }
 
